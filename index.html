@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NBFC Intelligence | Q3 FY26</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: #0a0e1a;
+  color: #e2e8f0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0a0e1a; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  background: rgba(10,14,26,0.95);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.header-logo {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, #0284c7, #38bdf8);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 800; color: white;
+  letter-spacing: -0.5px;
+}
+.header-title { font-size: 18px; font-weight: 700; color: #f1f5f9; letter-spacing: -0.3px; }
+.header-subtitle { font-size: 11px; color: #64748b; margin-top: 1px; }
+.header-badge {
+  background: rgba(2,132,199,0.15);
+  border: 1px solid rgba(2,132,199,0.3);
+  color: #38bdf8;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Tab Navigation ───────────────────────────────────────────────────────── */
+.tab-nav {
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  background: rgba(15,20,35,0.8);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  gap: 2px;
+  overflow-x: auto;
+}
+.tab-nav::-webkit-scrollbar { height: 0; }
+.tab-btn {
+  padding: 14px 18px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  margin-bottom: -1px;
+}
+.tab-btn:hover { color: #94a3b8; }
+.tab-btn.active {
+  color: #38bdf8;
+  border-bottom-color: #0284c7;
+  font-weight: 600;
+}
+
+/* ── Content Area ─────────────────────────────────────────────────────────── */
+.content { padding: 24px 32px; max-width: 1600px; margin: 0 auto; }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ── Section Label ────────────────────────────────────────────────────────── */
+.section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+  border-left: 2px solid #0284c7;
+  padding-left: 8px;
+  margin: 20px 0 12px;
+  display: block;
+}
+.section-label:first-child { margin-top: 4px; }
+
+/* ── NBFC Cards Grid ──────────────────────────────────────────────────────── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+@media (max-width: 1100px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 700px)  { .cards-grid { grid-template-columns: 1fr; } }
+
+.nbfc-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 16px 18px 14px;
+  border-top: 3px solid var(--accent);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.nbfc-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.card-name { font-size: 15px; font-weight: 700; color: #f1f5f9; line-height: 1.2; }
+.card-ticker {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 3px;
+  letter-spacing: 0.05em;
+}
+.card-segment {
+  font-size: 10px;
+  color: var(--accent);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.card-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.metric-item { }
+.metric-label {
+  font-size: 9.5px;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.metric-value {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.3px;
+}
+.metric-value.na { color: #334155; }
+.metric-value.highlight { color: var(--accent); }
+
+/* ── AUM Bar Chart Container ──────────────────────────────────────────────── */
+.chart-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.chart-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.chart-canvas-wrap { position: relative; }
+
+/* ── Peer Comparison Table ────────────────────────────────────────────────── */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+  margin-bottom: 20px;
+}
+.peer-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  min-width: 1100px;
+}
+.peer-table thead th {
+  background: rgba(255,255,255,0.05);
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+.peer-table thead th:first-child { text-align: left; }
+.peer-table thead th:hover { color: #94a3b8; }
+.peer-table thead th.sorted-asc::after  { content: " ↑"; color: #38bdf8; }
+.peer-table thead th.sorted-desc::after { content: " ↓"; color: #38bdf8; }
+.peer-table tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.1s;
+}
+.peer-table tbody tr:hover td { background: rgba(255,255,255,0.03); }
+.peer-table tbody td {
+  padding: 10px 12px;
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+.peer-table tbody td:first-child {
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  color: #f1f5f9;
+  font-size: 12.5px;
+}
+.peer-table tbody td.na-cell { color: #334155; }
+
+/* Heatmap cell */
+.hm { border-radius: 3px; padding: 3px 8px; display: inline-block; min-width: 60px; text-align: right; }
+
+/* Sort hint */
+.sort-hint {
+  font-size: 11px;
+  color: #475569;
+  margin-bottom: 10px;
+  padding-left: 2px;
+}
+.sort-hint span { color: #38bdf8; }
+
+/* ── Metric Toggle for Comparison ─────────────────────────────────────────── */
+.metric-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.metric-toggle-btn {
+  padding: 4px 11px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Inter', sans-serif;
+}
+.metric-toggle-btn:hover { border-color: rgba(255,255,255,0.15); color: #94a3b8; }
+.metric-toggle-btn.active {
+  background: rgba(2,132,199,0.15);
+  border-color: rgba(2,132,199,0.4);
+  color: #38bdf8;
+}
+
+/* ── Responsive tweaks ────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .header { padding: 14px 18px; }
+  .tab-nav { padding: 0 18px; }
+  .content { padding: 16px 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo">N</div>
+    <div>
+      <div class="header-title">NBFC Intelligence</div>
+      <div class="header-subtitle">9-NBFC Peer Benchmarking Dashboard</div>
+    </div>
+  </div>
+  <div class="header-badge">Q3 FY26</div>
+</header>
+
+<!-- ── Tab Navigation ─────────────────────────────────────────────────────── -->
+<nav class="tab-nav">
+  <button class="tab-btn active" data-tab="snapshot">Snapshot</button>
+  <button class="tab-btn" data-tab="peer">Peer Comparison</button>
+  <button class="tab-btn" data-tab="charts">Charts</button>
+  <button class="tab-btn" data-tab="timeseries">Time Series</button>
+  <button class="tab-btn" data-tab="ai">AI Initiatives</button>
+  <button class="tab-btn" data-tab="capital">Capital Adequacy</button>
+</nav>
+
+<!-- ── Content ─────────────────────────────────────────────────────────────── -->
+<main class="content">
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     TAB 1 — SNAPSHOT
+     ════════════════════════════════════════════════════════════════════════ -->
+<section class="tab-pane active" id="tab-snapshot">
+
+  <span class="section-label">Q3 FY26 Snapshot — 9 NBFCs</span>
+
+  <div class="cards-grid" id="cards-container"></div>
+
+  <span class="section-label">AUM Ranking — Q3 FY26 (₹ Cr)</span>
+  <div class="chart-box">
+    <div class="chart-canvas-wrap" style="height:280px;">
+      <canvas id="chart-aum-bar"></canvas>
+    </div>
+  </div>
+
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     TAB 2 — PEER COMPARISON
+     ════════════════════════════════════════════════════════════════════════ -->
+<section class="tab-pane" id="tab-peer">
+
+  <span class="section-label">Peer Comparison — Q3 FY26 <span style="font-weight:400;text-transform:none;letter-spacing:0;">&nbsp;·&nbsp; click column header to sort &nbsp;·&nbsp; colour = relative rank per metric</span></span>
+
+  <div class="sort-hint">Columns are <span>colour-coded per metric</span>: green = best, red = worst (within column). Click any header to sort.</div>
+
+  <div class="table-wrap">
+    <table class="peer-table" id="peer-table">
+      <thead id="peer-thead"></thead>
+      <tbody id="peer-tbody"></tbody>
+    </table>
+  </div>
+
+  <div style="font-size:10.5px;color:#334155;margin-top:8px;line-height:1.6;">
+    * N/A = not reported or not disclosed by the company for this quarter.
+    Muthoot Finance NNPA/PCR not disclosed. Poonawalla ROE not reported.
+    Bajaj Finance NIM not separately disclosed (NII/AUM = 11.71%, shown above for comparability).
+    Piramal ROA = RoAUM on growth business only.
+  </div>
+
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     TAB 3 — CHARTS (placeholder, built Phase 2)
+     ════════════════════════════════════════════════════════════════════════ -->
+<section class="tab-pane" id="tab-charts">
+  <span class="section-label">Charts — Coming in Phase 2</span>
+  <div class="chart-box" style="text-align:center;padding:60px;color:#334155;font-size:14px;">
+    Phase 2 build in progress.
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     TAB 4 — TIME SERIES (placeholder)
+     ════════════════════════════════════════════════════════════════════════ -->
+<section class="tab-pane" id="tab-timeseries">
+  <span class="section-label">Time Series — Coming in Phase 2</span>
+  <div class="chart-box" style="text-align:center;padding:60px;color:#334155;font-size:14px;">
+    Phase 2 build in progress.
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     TAB 5 — AI INITIATIVES (placeholder)
+     ════════════════════════════════════════════════════════════════════════ -->
+<section class="tab-pane" id="tab-ai">
+  <span class="section-label">AI Initiatives — Coming in Phase 3</span>
+  <div class="chart-box" style="text-align:center;padding:60px;color:#334155;font-size:14px;">
+    Phase 3 build in progress.
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     TAB 6 — CAPITAL ADEQUACY (placeholder)
+     ════════════════════════════════════════════════════════════════════════ -->
+<section class="tab-pane" id="tab-capital">
+  <span class="section-label">Capital Adequacy — Coming in Phase 3</span>
+  <div class="chart-box" style="text-align:center;padding:60px;color:#334155;font-size:14px;">
+    Phase 3 build in progress.
+  </div>
+</section>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     DATA
+     ════════════════════════════════════════════════════════════════════════ -->
+<script>
+// ── Per-NBFC accent colours ──────────────────────────────────────────────────
+const ACCENT = {
+  "Bajaj Finance":        "#FF6B35",
+  "Shriram Finance":      "#4A9EFF",
+  "Chola Finance":        "#34C785",
+  "Muthoot Finance":      "#FFD700",
+  "Aditya Birla Capital": "#B06AE8",
+  "Mahindra Finance":     "#FF4757",
+  "L&T Finance":          "#1E90FF",
+  "Piramal Finance":      "#20E3C4",
+  "Poonawalla Fincorp":   "#FF8C69",
+};
+
+// ── Q3 FY26 Snapshot Data ────────────────────────────────────────────────────
+const NBFCS = [
+  { name:"Bajaj Finance",        ticker:"BAJFINANCE",  segment:"Diversified Retail",           aum:485883, pat:5317, roa:4.6,  roe:19.6,  gnpa:1.21, nnpa:0.47, nim:11.71, pcr:61.0,  cob:7.45, de:4.75, car:21.45, bvps:170  },
+  { name:"Shriram Finance",      ticker:"SHRIRAMFIN",  segment:"CV / Rural Lending",           aum:291709, pat:2522, roa:3.09, roe:16.33, gnpa:4.54, nnpa:2.38, nim:8.58,  pcr:48.77, cob:8.0,  de:4.05, car:20.27, bvps:330  },
+  { name:"Chola Finance",        ticker:"CHOLAFIN",    segment:"Vehicle / Home / SME",         aum:227770, pat:1288, roa:3.2,  roe:19.1,  gnpa:3.36, nnpa:1.91, nim:8.0,   pcr:43.0,  cob:6.7,  de:7.5,  car:19.16, bvps:327  },
+  { name:"Muthoot Finance",      ticker:"MUTHOOTFIN",  segment:"Gold Loans",                   aum:164720, pat:2824, roa:7.59, roe:32.03, gnpa:1.58, nnpa:null, nim:12.77, pcr:null,  cob:8.9,  de:3.40, car:null,  bvps:859  },
+  { name:"Aditya Birla Capital", ticker:"ABCAPITAL",   segment:"Diversified NBFC+HFC",         aum:148182, pat:772,  roa:2.25, roe:15.2,  gnpa:1.51, nnpa:0.84, nim:6.12,  pcr:44.3,  cob:6.56, de:4.59, car:17.34, bvps:106  },
+  { name:"Mahindra Finance",     ticker:"M&MFIN",      segment:"Vehicle / Rural",              aum:128965, pat:810,  roa:1.9,  roe:11.8,  gnpa:3.80, nnpa:1.82, nim:7.5,   pcr:53.0,  cob:6.0,  de:4.87, car:null,  bvps:171  },
+  { name:"L&T Finance",          ticker:"LTF",         segment:"Rural / Consumer / SME",       aum:114285, pat:760,  roa:2.37, roe:11.38, gnpa:3.19, nnpa:0.92, nim:8.58,  pcr:72.0,  cob:7.25, de:3.78, car:19.10, bvps:108  },
+  { name:"Piramal Finance",      ticker:"PIRAMALENT",  segment:"Retail / Wholesale Lending",   aum:96690,  pat:401,  roa:1.9,  roe:null,  gnpa:2.6,  nnpa:1.9,  nim:6.3,   pcr:27.9,  cob:8.9,  de:2.71, car:null,  bvps:1232 },
+  { name:"Poonawalla Fincorp",   ticker:"POONAWALLA",  segment:"Consumer / SME Loans",         aum:55017,  pat:150,  roa:1.20, roe:null,  gnpa:1.51, nnpa:0.80, nim:8.62,  pcr:47.75, cob:7.65, de:4.25, car:18.17, bvps:124  },
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmt = {
+  cr: v => v == null ? "N/A" : "₹" + v.toLocaleString("en-IN"),
+  pct: v => v == null ? "N/A" : v.toFixed(2) + "%",
+  x: v => v == null ? "N/A" : v.toFixed(2) + "x",
+  rs: v => v == null ? "N/A" : "₹" + v.toLocaleString("en-IN"),
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// TAB 1 — SNAPSHOT CARDS
+// ════════════════════════════════════════════════════════════════════════════
+function buildCards() {
+  const container = document.getElementById("cards-container");
+  NBFCS.forEach(n => {
+    const acc = ACCENT[n.name];
+    const metrics = [
+      { label:"AUM",  value: n.aum  == null ? "N/A" : "₹" + (n.aum/1000).toFixed(0) + "K Cr" },
+      { label:"PAT",  value: n.pat  == null ? "N/A" : "₹" + n.pat.toLocaleString("en-IN") + " Cr" },
+      { label:"ROA",  value: fmt.pct(n.roa) },
+      { label:"ROE",  value: fmt.pct(n.roe) },
+      { label:"GNPA", value: fmt.pct(n.gnpa) },
+      { label:"NNPA", value: fmt.pct(n.nnpa) },
+      { label:"NIM",  value: fmt.pct(n.nim) },
+      { label:"PCR",  value: fmt.pct(n.pcr) },
+      { label:"D/E",  value: fmt.x(n.de) },
+      { label:"CAR",  value: fmt.pct(n.car) },
+    ];
+    const metricsHtml = metrics.map(m => `
+      <div class="metric-item">
+        <div class="metric-label">${m.label}</div>
+        <div class="metric-value ${m.value === 'N/A' ? 'na' : ''}">${m.value}</div>
+      </div>
+    `).join("");
+
+    const card = document.createElement("div");
+    card.className = "nbfc-card";
+    card.style.setProperty("--accent", acc);
+    card.innerHTML = `
+      <div class="card-header">
+        <div>
+          <div class="card-name">${n.name}</div>
+          <div class="card-ticker">${n.ticker}</div>
+        </div>
+        <div class="card-segment">${n.segment}</div>
+      </div>
+      <div class="card-metrics" style="grid-template-columns:repeat(5,1fr);">
+        ${metricsHtml}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// AUM BAR CHART
+// ════════════════════════════════════════════════════════════════════════════
+function buildAumChart() {
+  const sorted = [...NBFCS].sort((a,b) => b.aum - a.aum);
+  const ctx = document.getElementById("chart-aum-bar").getContext("2d");
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: sorted.map(n => n.name),
+      datasets: [{
+        data: sorted.map(n => n.aum),
+        backgroundColor: sorted.map(n => ACCENT[n.name] + "CC"),
+        borderColor: sorted.map(n => ACCENT[n.name]),
+        borderWidth: 1,
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => " ₹" + ctx.raw.toLocaleString("en-IN") + " Cr"
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(255,255,255,0.05)" },
+          ticks: {
+            color: "#64748b",
+            callback: v => "₹" + (v/1000).toFixed(0) + "K"
+          },
+          border: { color: "rgba(255,255,255,0.08)" }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: "#94a3b8", font: { size: 12 } },
+          border: { color: "rgba(255,255,255,0.08)" }
+        }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TAB 2 — PEER COMPARISON TABLE (sortable + heatmap)
+// ════════════════════════════════════════════════════════════════════════════
+const PEER_COLS = [
+  { key:"name",  label:"NBFC",           fmt: v => v,               hm: false, higherBetter: null },
+  { key:"aum",   label:"AUM (₹ Cr)",     fmt: v => v == null ? "—" : "₹" + v.toLocaleString("en-IN"), hm: true,  higherBetter: true },
+  { key:"pat",   label:"PAT (₹ Cr)",     fmt: v => v == null ? "—" : "₹" + v.toLocaleString("en-IN"), hm: true,  higherBetter: true },
+  { key:"nim",   label:"NIM %",          fmt: v => v == null ? "—" : v.toFixed(2) + "%", hm: true,  higherBetter: true },
+  { key:"roa",   label:"ROA %",          fmt: v => v == null ? "—" : v.toFixed(2) + "%", hm: true,  higherBetter: true },
+  { key:"roe",   label:"ROE %",          fmt: v => v == null ? "—" : v.toFixed(2) + "%", hm: true,  higherBetter: true },
+  { key:"gnpa",  label:"GNPA %",         fmt: v => v == null ? "—" : v.toFixed(2) + "%", hm: true,  higherBetter: false },
+  { key:"nnpa",  label:"NNPA %",         fmt: v => v == null ? "—" : v.toFixed(2) + "%", hm: true,  higherBetter: false },
+  { key:"pcr",   label:"PCR %",          fmt: v => v == null ? "—" : v.toFixed(2) + "%", hm: true,  higherBetter: true },
+  { key:"cob",   label:"Cost of Borr %", fmt: v => v == null ? "—" : v.toFixed(2) + "%", hm: true,  higherBetter: false },
+  { key:"de",    label:"D/E",            fmt: v => v == null ? "—" : v.toFixed(2) + "x", hm: true,  higherBetter: false },
+  { key:"car",   label:"CAR %",          fmt: v => v == null ? "—" : v.toFixed(2) + "%", hm: true,  higherBetter: true },
+  { key:"bvps",  label:"BVPS (₹)",       fmt: v => v == null ? "—" : "₹" + v.toLocaleString("en-IN"), hm: true,  higherBetter: true },
+];
+
+let peerSortKey = null;
+let peerSortDir = 1; // 1=asc, -1=desc
+
+function heatmapColor(norm, higherBetter) {
+  // norm = 0..1 where 1 = best (after adjusting for direction)
+  const t = higherBetter ? norm : (1 - norm);
+  // green (good) → red (bad)
+  // t=1 → green, t=0 → red
+  if (t > 0.66) {
+    const s = (t - 0.66) / 0.34;
+    return `rgba(34,197,94,${0.08 + s * 0.22})`; // green
+  } else if (t > 0.33) {
+    return `rgba(234,179,8,0.10)`; // yellow/neutral
+  } else {
+    const s = (0.33 - t) / 0.33;
+    return `rgba(239,68,68,${0.08 + s * 0.22})`; // red
+  }
+}
+
+function buildPeerTable(data) {
+  const thead = document.getElementById("peer-thead");
+  const tbody = document.getElementById("peer-tbody");
+
+  // Header
+  thead.innerHTML = "<tr>" + PEER_COLS.map((col, i) => {
+    let cls = "";
+    if (peerSortKey === col.key) cls = peerSortDir === 1 ? "sorted-asc" : "sorted-desc";
+    return `<th class="${cls}" data-col="${col.key}" title="Click to sort">${col.label}</th>`;
+  }).join("") + "</tr>";
+
+  // Pre-compute per-column min/max for heatmap (excluding null)
+  const colStats = {};
+  PEER_COLS.forEach(col => {
+    if (!col.hm) return;
+    const vals = data.map(n => n[col.key]).filter(v => v != null);
+    colStats[col.key] = { min: Math.min(...vals), max: Math.max(...vals) };
+  });
+
+  // Rows
+  tbody.innerHTML = data.map(n => {
+    return "<tr>" + PEER_COLS.map(col => {
+      const v = n[col.key];
+      const formatted = col.fmt(v);
+      if (!col.hm || v == null) {
+        const isNA = v == null && col.key !== "name";
+        return `<td class="${isNA ? 'na-cell' : ''}">${formatted}</td>`;
+      }
+      const { min, max } = colStats[col.key];
+      const range = max - min;
+      const norm = range === 0 ? 0.5 : (v - min) / range;
+      const bg = heatmapColor(norm, col.higherBetter);
+      return `<td><span class="hm" style="background:${bg}">${formatted}</span></td>`;
+    }).join("") + "</tr>";
+  }).join("");
+
+  // Attach sort listeners
+  thead.querySelectorAll("th[data-col]").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.col;
+      if (key === "name") {
+        peerSortKey = "name";
+        peerSortDir = peerSortDir === 1 ? -1 : 1;
+      } else {
+        if (peerSortKey === key) {
+          peerSortDir *= -1;
+        } else {
+          peerSortKey = key;
+          peerSortDir = -1; // default: highest first
+        }
+      }
+      const sorted = [...NBFCS].sort((a, b) => {
+        const va = a[peerSortKey];
+        const vb = b[peerSortKey];
+        if (va == null && vb == null) return 0;
+        if (va == null) return 1;
+        if (vb == null) return -1;
+        if (typeof va === "string") return peerSortDir * va.localeCompare(vb);
+        return peerSortDir * (va - vb);
+      });
+      buildPeerTable(sorted);
+    });
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ════════════════════════════════════════════════════════════════════════════
+const TAB_MAP = {
+  snapshot: "tab-snapshot",
+  peer:     "tab-peer",
+  charts:   "tab-charts",
+  timeseries: "tab-timeseries",
+  ai:       "tab-ai",
+  capital:  "tab-capital",
+};
+
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(TAB_MAP[btn.dataset.tab]).classList.add("active");
+  });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════════════════
+Chart.defaults.color = "#64748b";
+Chart.defaults.borderColor = "rgba(255,255,255,0.05)";
+
+buildCards();
+buildAumChart();
+buildPeerTable([...NBFCS]);
+</script>
+</body>
+</html>
