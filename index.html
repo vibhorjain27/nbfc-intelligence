@@ -215,7 +215,7 @@ body{font-family:'Inter',sans-serif;background:#0a0e1a;color:#e2e8f0;min-height:
 
 <!-- ═══════════ TAB 4: CAPITAL ═══════════ -->
 <section class="tab-pane" id="tab-capital">
-  <span class="slabel">Capital &amp; Leverage — 8-Quarter Trend</span>
+  <span class="slabel">Capital &amp; Leverage — 8-Quarter Trend <span style="font-weight:400;text-transform:none;letter-spacing:0;">&nbsp;·&nbsp; CoB · CAR · Tier 1 · Tier 2 · D/E</span></span>
   <div class="ts-controls" id="ctrl-capital"></div>
   <div class="chart-box"><div class="chart-wrap"><canvas id="chart-capital"></canvas></div></div>
 </section>
@@ -229,8 +229,12 @@ body{font-family:'Inter',sans-serif;background:#0a0e1a;color:#e2e8f0;min-height:
 
 <!-- ═══════════ TAB 6: VALUATION ═══════════ -->
 <section class="tab-pane" id="tab-valuation">
-  <span class="slabel">Valuation — 8-Quarter Trend</span>
+  <span class="slabel">P/B Ratio <span style="font-weight:400;text-transform:none;letter-spacing:0;">&nbsp;·&nbsp; Daily NSE closing price ÷ latest quarterly BVPS</span></span>
   <div class="ts-controls" id="ctrl-valuation"></div>
+  <div class="chart-box" id="pb-loading-box"><div class="price-loading"><div class="spinner"></div><span>Fetching 2-year price history from Yahoo Finance…</span></div></div>
+  <div class="chart-box" id="pb-chart-box" style="display:none"><div class="chart-wrap" style="height:420px"><canvas id="chart-pb"></canvas></div></div>
+  <div class="footnote" style="margin-bottom:20px">P/B = Daily NSE closing price ÷ most recently reported quarterly BVPS. BVPS steps up at each quarter-end (Q4FY24–Q3FY26). Lower P/B may indicate undervaluation relative to peers.</div>
+  <span class="slabel">Book Value Per Share (BVPS) <span style="font-weight:400;text-transform:none;letter-spacing:0;">&nbsp;·&nbsp; ₹ per share · quarterly</span></span>
   <div class="chart-box"><div class="chart-wrap"><canvas id="chart-valuation"></canvas></div></div>
 </section>
 
@@ -471,16 +475,16 @@ const TS_CONFIG = {
     def:'gnpa_pct', unit:{gnpa_pct:'%',nnpa_pct:'%',pcr_pct:'%'}
   },
   'capital': {
-    metrics:[['car_pct','CAR %'],['t1_pct','Tier 1 %'],['t2_pct','Tier 2 %'],['d_e_ratio','D/E Ratio']],
-    def:'car_pct', unit:{car_pct:'%',t1_pct:'%',t2_pct:'%',d_e_ratio:'x'}
+    metrics:[['cost_of_borrowing_pct','Cost of Borrowing %'],['car_pct','CAR %'],['t1_pct','Tier 1 %'],['t2_pct','Tier 2 %'],['d_e_ratio','D/E Ratio']],
+    def:'cost_of_borrowing_pct', unit:{cost_of_borrowing_pct:'%',car_pct:'%',t1_pct:'%',t2_pct:'%',d_e_ratio:'x'}
   },
   'profitability': {
     metrics:[['roa_pct','ROA %'],['roe_pct','ROE %']],
     def:'roa_pct', unit:{roa_pct:'%',roe_pct:'%'}
   },
   'valuation': {
-    metrics:[['bvps_inr','BVPS (₹)'],['cost_of_borrowing_pct','Cost of Borrowing %']],
-    def:'bvps_inr', unit:{bvps_inr:'₹',cost_of_borrowing_pct:'%'}
+    metrics:[['bvps_inr','BVPS (₹)']],
+    def:'bvps_inr', unit:{bvps_inr:'₹'}
   },
 };
 
@@ -513,6 +517,7 @@ function buildTSControls(tab) {
     else s.add(b.dataset.nbfc);
     buildTSControls(b.dataset.tab);
     renderTSChart(b.dataset.tab);
+    if(b.dataset.tab === 'valuation') renderPBFromCache();
   }));
 }
 
@@ -828,6 +833,117 @@ function renderSH() {
 }
 
 // ═══════════════════════════════════════════════════════
+// TAB 6: P/B RATIO CHART (live Yahoo Finance 2y history)
+// ═══════════════════════════════════════════════════════
+const QUARTER_ENDS_PB = [
+  {ts: Date.UTC(2024,2,31), idx:0}, // Q4FY24 ends Mar 31 2024
+  {ts: Date.UTC(2024,5,30), idx:1}, // Q1FY25 ends Jun 30 2024
+  {ts: Date.UTC(2024,8,30), idx:2}, // Q2FY25 ends Sep 30 2024
+  {ts: Date.UTC(2024,11,31),idx:3}, // Q3FY25 ends Dec 31 2024
+  {ts: Date.UTC(2025,2,31), idx:4}, // Q4FY25 ends Mar 31 2025
+  {ts: Date.UTC(2025,5,30), idx:5}, // Q1FY26 ends Jun 30 2025
+  {ts: Date.UTC(2025,8,30), idx:6}, // Q2FY26 ends Sep 30 2025
+  {ts: Date.UTC(2025,11,31),idx:7}, // Q3FY26 ends Dec 31 2025
+];
+
+function getBvpsIdx(dateMs) {
+  let idx = null;
+  for(const q of QUARTER_ENDS_PB) { if(q.ts <= dateMs) idx = q.idx; else break; }
+  return idx;
+}
+
+const pbCache = {}; // name -> {dates:[], pbs:[]} | null
+
+async function buildPBChart() {
+  document.getElementById('pb-loading-box').style.display = 'flex';
+  document.getElementById('pb-chart-box').style.display = 'none';
+
+  await Promise.all(NBFC_NAMES.map(async name => {
+    if(name in pbCache) return; // already fetched (could be null)
+    const ticker = YF_TICKERS[name];
+    const bvpsSeries = TIMESERIES[name]?.bvps_inr;
+    if(!ticker || !bvpsSeries) { pbCache[name] = null; return; }
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=2y`;
+      const res = await fetch(url);
+      const json = await res.json();
+      const result = json.chart?.result?.[0];
+      if(!result) { pbCache[name] = null; return; }
+      const timestamps = result.timestamp || [];
+      const closes = result.indicators?.quote?.[0]?.close || [];
+      const dates = [], pbs = [];
+      timestamps.forEach((ts, i) => {
+        const close = closes[i];
+        if(!close) return;
+        const dateMs = ts * 1000;
+        const idx = getBvpsIdx(dateMs);
+        if(idx === null) return;
+        const bvps = bvpsSeries[idx];
+        if(!bvps || bvps <= 0) return;
+        dates.push(new Date(dateMs).toISOString().slice(0,10));
+        pbs.push(+(close / bvps).toFixed(3));
+      });
+      pbCache[name] = dates.length ? {dates, pbs} : null;
+    } catch(e) { pbCache[name] = null; }
+  }));
+
+  document.getElementById('pb-loading-box').style.display = 'none';
+  document.getElementById('pb-chart-box').style.display = 'block';
+  renderPBFromCache();
+}
+
+function renderPBFromCache() {
+  const active = [...tsState['valuation'].active];
+  const allDatesSet = new Set();
+  active.forEach(n => { if(pbCache[n]) pbCache[n].dates.forEach(d => allDatesSet.add(d)); });
+  const allDates = [...allDatesSet].sort();
+
+  const datasets = active.map(name => {
+    const c = pbCache[name];
+    if(!c) return null;
+    const map = {};
+    c.dates.forEach((d,i) => { map[d] = c.pbs[i]; });
+    return {
+      label: name,
+      data: allDates.map(d => map[d] ?? null),
+      borderColor: ACCENT[name],
+      backgroundColor: ACCENT[name]+'15',
+      pointRadius: 0, borderWidth: 2, tension: 0.15, spanGaps: false,
+    };
+  }).filter(Boolean);
+
+  destroyChart('chart-pb');
+  charts['chart-pb'] = new Chart(document.getElementById('chart-pb'), {
+    type:'line',
+    data:{labels:allDates, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'top',labels:{color:'#94a3b8',font:{size:11},padding:12,boxWidth:12}},
+        tooltip:{callbacks:{
+          title: ctx => {
+            if(!ctx[0]) return '';
+            const d = new Date(ctx[0].label);
+            return d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+          },
+          label: ctx => ctx.raw!=null ? ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)}×` : null,
+        }},
+        annotation:{
+          annotations:{
+            bookLine:{type:'line',yMin:1,yMax:1,borderColor:'rgba(255,255,255,.18)',borderWidth:1,borderDash:[4,4],label:{display:true,content:'P/B = 1×',color:'#475569',font:{size:9},position:'end',backgroundColor:'transparent'}}
+          }
+        }
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#64748b',font:{size:10},maxTicksLimit:14,maxRotation:0},border:{color:'rgba(255,255,255,.08)'}},
+        y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#64748b',font:{size:11},callback:v=>v+'×'},border:{color:'rgba(255,255,255,.08)'},title:{display:true,text:'Price / Book Value',color:'#475569',font:{size:10}}}
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
 // TAB SWITCHING
 // ═══════════════════════════════════════════════════════
 const TAB_IDS = ['market','financials','asset-quality','capital','profitability','valuation','deep-dive','rankings','ai-bulletin','shareholding'];
@@ -839,6 +955,7 @@ function activateTab(tab) {
   if(initialised.has(tab)) return;
   initialised.add(tab);
   if(tab==='market') { /* already init */ return; }
+  if(tab==='valuation') { buildTSControls(tab); renderTSChart(tab); buildPBChart(); return; }
   if(TS_CONFIG[tab]) { buildTSControls(tab); renderTSChart(tab); return; }
   if(tab==='deep-dive') { buildDeepDiveControls(); renderDeepDive(); return; }
   if(tab==='rankings') { buildRankTable([...NBFCS]); return; }
